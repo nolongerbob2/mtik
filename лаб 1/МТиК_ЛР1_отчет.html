@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>МТиК ЛР1</title></head>
+<body style="font-family:'Times New Roman',serif;font-size:12pt;margin:2cm;">
+<h1 style="text-align:center;font-size:14pt;">МИНИСТЕРСТВО НАУКИ И ВЫСШЕГО ОБРАЗОВАНИЯ РОССИЙСКОЙ ФЕДЕРАЦИИ</h1>
+<h1 style="text-align:center;font-size:14pt;">Федеральное государственное бюджетное образовательное учреждение высшего образования «МОСКОВСКИЙ ПОЛИТЕХНИЧЕСКИЙ УНИВЕРСИТЕТ»</h1>
+<p><br/></p>
+<h1 style="text-align:center;font-size:14pt;">Лабораторная работа №1</h1>
+<h1 style="text-align:center;font-size:14pt;">по дисциплине «Методы трансляции и компиляции»</h1>
+<p><br/><br/></p>
+<p style="text-align:justify;"><b>Выполнил:</b> _________________________ <i>(укажите ФИО и номер группы)</i></p>
+<p><br/></p>
+<h2 style="font-size:13pt;margin-top:12pt;">Задание</h2>
+<p style="text-align:justify;">Создать публичный репозиторий на GitHub для проекта компилятора. Выбрать язык программирования. Написать программу test.* с разнообразными конструкциями. Разработать модуль, который с использованием регулярных выражений очищает исходный код от лишней информации: комментарии, лишние пробелы и пустые строки. Обеспечить информационные сообщения и сообщения об ошибках (незакрытый многострочный комментарий, недопустимые символы).</p>
+<h2 style="font-size:13pt;margin-top:12pt;">Репозиторий</h2>
+<p style="text-align:justify;"><a href="https://github.com/nolongerbob2/mtik">https://github.com/nolongerbob2/mtik</a></p>
+<h2 style="font-size:13pt;margin-top:12pt;">Исходный код тестовой программы test.cpp</h2>
+<pre style="font-family:Menlo,Consolas,monospace;font-size:9pt;white-space:pre-wrap;background:#f5f5f5;padding:8pt;border:1px solid #ccc;">// test.cpp — тестовый исходник для лабораторной (объявления, выражения, if/else, циклы, функции)
+
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+static const int kLimit = 42;
+
+/* многострочный
+   комментарий перед функцией */
+static int add(int a, int b) {
+    return a + b;
+}
+
+static bool in_range(int x, int lo, int hi) {
+    if (x &lt; lo) {
+        return false;
+    } else if (x &gt; hi) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+static void print_sum(int s) {
+    std::cout &lt;&lt; &quot;sum=&quot; &lt;&lt; s &lt;&lt; std::endl;  // вызов и строковый литерал с //
+}
+
+int main() {
+    int n = 5;
+    int sum = 0;
+    int prod = 1;
+    double ratio = 0.0;
+    bool flag = true;
+
+    sum = add(2, 3);
+    prod = n * (n - 1);
+    ratio = static_cast&lt;double&gt;(sum) / static_cast&lt;double&gt;(n);
+
+    if ((sum &gt; kLimit) &amp;&amp; flag) {
+        print_sum(sum);
+    } else if (sum == 0 || !flag) {
+        print_sum(0);
+    } else {
+        print_sum(sum / 2);
+    }
+
+    for (int i = 0; i &lt; n; ++i) {
+        prod += i;
+        if (i % 2 == 0) {
+            sum -= 1;
+        }
+    }
+
+    while (n &gt; 0) {
+        --n;
+        if (n == 2) {
+            break;
+        }
+    }
+
+    std::vector&lt;int&gt; v = {1, 2, 3};
+    int acc = 0;
+    for (int x : v) {
+        acc += x;
+    }
+
+    return (in_range(acc, 0, 100) &amp;&amp; prod &gt;= 1 &amp;&amp; ratio &gt;= 0.0) ? 0 : 1;
+}
+</pre>
+<h2 style="font-size:13pt;margin-top:12pt;">Описание регулярных выражений и логики очистки</h2>
+<p style="text-align:justify;">Удаление однострочных (<code>//</code>) и блочных (<code>/* … */</code>) комментариев реализовано <b>посимвольным разбором с конечным автоматом</b> (состояния Normal, LineComment, BlockComment, String, Char), чтобы не удалять фрагменты <code>//</code> и <code>/*</code> внутри строковых и символьных литералов. После удаления комментариев <b>нормализация пробелов</b> выполняется средствами <code>std::regex</code> (C++17).</p>
+<p style="text-align:justify;"><b>1)</b> <code>R"(\r\n)"</code> — замена последовательности CRLF на один символ перевода строки <code>\n</code>.</p>
+<p style="text-align:justify;"><b>2)</b> <code>R"(\r)"</code> — замена оставшихся символов возврата каретки на <code>\n</code>.</p>
+<p style="text-align:justify;"><b>3)</b> <code>R"(^\s+|\s+$)"</code> — удаление пробельных символов в начале и в конце каждой строки (применяется к строке целиком после разбиения текста по <code>\n</code>).</p>
+<p style="text-align:justify;"><b>4)</b> <code>R"([ \t]+)"</code> — один или более пробелов или табуляций подряд заменяются одним пробелом.</p>
+<p style="text-align:justify;">Строки, ставшие пустыми после обрезки, в результат не включаются.</p>
+<h2 style="font-size:13pt;margin-top:12pt;">Исходный код разработанного модуля препроцессора (preprocessor.cpp)</h2>
+<pre style="font-family:Menlo,Consolas,monospace;font-size:9pt;white-space:pre-wrap;background:#f5f5f5;padding:8pt;border:1px solid #ccc;">// Лабораторная 1: препроцессор (C++). Комментарии — посимвольно (учёт строк/символов);
+// нормализация пробелов и пустых строк — std::regex.
+
+#include &lt;cctype&gt;
+#include &lt;cstring&gt;
+#include &lt;fstream&gt;
+#include &lt;iostream&gt;
+#include &lt;regex&gt;
+#include &lt;stdexcept&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+
+namespace {
+
+enum class ScanState { Normal, LineComment, BlockComment, String, Char };
+
+// Недопустимы: управляющие ASCII (кроме таба и переводов строк) и DEL.
+// Остальное (включая UTF-8 в комментариях/строках) для C++ считаем допустимым.
+bool is_allowed_in_cpp_source(unsigned char c) {
+    if (c &lt; 32) {
+        return c == &#x27;\t&#x27; || c == &#x27;\n&#x27; || c == &#x27;\r&#x27;;
+    }
+    return c != 127;
+}
+
+void report_invalid_characters(const std::string&amp; src) {
+    int line = 1;
+    int col = 1;
+    for (unsigned char uc : src) {
+        if (!is_allowed_in_cpp_source(uc)) {
+            std::cerr &lt;&lt; &quot;Ошибка: недопустимый символ в исходном тексте (код &quot;
+                      &lt;&lt; static_cast&lt;int&gt;(uc) &lt;&lt; &quot;) в строке &quot; &lt;&lt; line
+                      &lt;&lt; &quot;, позиция &quot; &lt;&lt; col &lt;&lt; &quot;.\n&quot;;
+        }
+        if (uc == &#x27;\n&#x27;) {
+            ++line;
+            col = 1;
+        } else {
+            ++col;
+        }
+    }
+}
+
+// Удаление // и /* */ с учётом литералов &quot;...&quot; и &#x27;...&#x27;; при незакрытом /* задаёт флаг.
+std::string strip_comments(const std::string&amp; src, bool&amp; unclosed_block) {
+    unclosed_block = false;
+    std::string out;
+    out.reserve(src.size());
+
+    ScanState st = ScanState::Normal;
+    for (size_t i = 0; i &lt; src.size(); ++i) {
+        char c = src[i];
+
+        switch (st) {
+        case ScanState::Normal:
+            if (c == &#x27;/&#x27; &amp;&amp; i + 1 &lt; src.size()) {
+                if (src[i + 1] == &#x27;/&#x27;) {
+                    st = ScanState::LineComment;
+                    ++i;
+                    continue;
+                }
+                if (src[i + 1] == &#x27;*&#x27;) {
+                    st = ScanState::BlockComment;
+                    ++i;
+                    continue;
+                }
+            }
+            if (c == &#x27;&quot;&#x27;) {
+                st = ScanState::String;
+            } else if (c == &#x27;\&#x27;&#x27;) {
+                st = ScanState::Char;
+            }
+            out += c;
+            break;
+
+        case ScanState::LineComment:
+            if (c == &#x27;\n&#x27;) {
+                st = ScanState::Normal;
+                out += c;
+            }
+            break;
+
+        case ScanState::BlockComment:
+            if (c == &#x27;*&#x27; &amp;&amp; i + 1 &lt; src.size() &amp;&amp; src[i + 1] == &#x27;/&#x27;) {
+                st = ScanState::Normal;
+                ++i;
+            }
+            break;
+
+        case ScanState::String:
+            out += c;
+            if (c == &#x27;\\&#x27; &amp;&amp; i + 1 &lt; src.size()) {
+                out += src[++i];
+            } else if (c == &#x27;&quot;&#x27;) {
+                st = ScanState::Normal;
+            }
+            break;
+
+        case ScanState::Char:
+            out += c;
+            if (c == &#x27;\\&#x27; &amp;&amp; i + 1 &lt; src.size()) {
+                out += src[++i];
+            } else if (c == &#x27;\&#x27;&#x27;) {
+                st = ScanState::Normal;
+            }
+            break;
+        }
+    }
+
+    if (st == ScanState::BlockComment) {
+        unclosed_block = true;
+    }
+    return out;
+}
+
+std::string read_all(const std::string&amp; path) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        throw std::runtime_error(&quot;не удалось открыть входной файл: &quot; + path);
+    }
+    std::ostringstream buf;
+    buf &lt;&lt; in.rdbuf();
+    return buf.str();
+}
+
+void write_all(const std::string&amp; path, const std::string&amp; data) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out) {
+        throw std::runtime_error(&quot;не удалось открыть выходной файл: &quot; + path);
+    }
+    out &lt;&lt; data;
+}
+
+// Схлопывание пробелов и табов внутри строки, обрезка краёв — через regex; пустые строки убраны.
+std::string normalize_whitespace_regex(const std::string&amp; text) {
+    static const std::regex crlf(R&quot;(\r\n)&quot;);
+    static const std::regex lone_cr(R&quot;(\r)&quot;);
+    static const std::regex leading_trailing(R&quot;(^\s+|\s+$)&quot;);
+    static const std::regex spaces_tabs(R&quot;([ \t]+)&quot;);
+
+    std::string normalized = std::regex_replace(text, crlf, &quot;\n&quot;);
+    normalized = std::regex_replace(normalized, lone_cr, &quot;\n&quot;);
+
+    std::istringstream iss(normalized);
+    std::string line;
+    std::ostringstream result;
+
+    bool first_out = true;
+    while (std::getline(iss, line)) {
+        // убрать возможный &#x27;\r&#x27; в конце (Windows)
+        if (!line.empty() &amp;&amp; line.back() == &#x27;\r&#x27;) {
+            line.pop_back();
+        }
+        std::string trimmed = std::regex_replace(line, leading_trailing, &quot;&quot;);
+        std::string collapsed = std::regex_replace(trimmed, spaces_tabs, &quot; &quot;);
+        if (collapsed.empty()) {
+            continue;
+        }
+        if (!first_out) {
+            result &lt;&lt; &#x27;\n&#x27;;
+        }
+        result &lt;&lt; collapsed;
+        first_out = false;
+    }
+    return result.str();
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cerr &lt;&lt; &quot;Использование: &quot; &lt;&lt; argv[0] &lt;&lt; &quot; &lt;входной_файл&gt; &lt;выходной_файл&gt;\n&quot;;
+        std::cerr &lt;&lt; &quot;Пример: &quot; &lt;&lt; argv[0] &lt;&lt; &quot; test.cpp test.clean.cpp\n&quot;;
+        return 1;
+    }
+
+    const std::string in_path = argv[1];
+    const std::string out_path = argv[2];
+
+    try {
+        std::cout &lt;&lt; &quot;Чтение: &quot; &lt;&lt; in_path &lt;&lt; &quot;\n&quot;;
+        std::string src = read_all(in_path);
+
+        report_invalid_characters(src);
+
+        bool unclosed = false;
+        std::string no_comments = strip_comments(src, unclosed);
+        if (unclosed) {
+            std::cerr &lt;&lt; &quot;Ошибка: незакрытый многострочный комментарий /* ... */.\n&quot;;
+        }
+
+        std::string cleaned = normalize_whitespace_regex(no_comments);
+        write_all(out_path, cleaned);
+
+        std::cout &lt;&lt; &quot;Готово: результат записан в &quot; &lt;&lt; out_path &lt;&lt; &quot;\n&quot;;
+        if (unclosed) {
+            return 2;
+        }
+    } catch (const std::exception&amp; ex) {
+        std::cerr &lt;&lt; &quot;Ошибка: &quot; &lt;&lt; ex.what() &lt;&lt; &quot;\n&quot;;
+        return 1;
+    }
+
+    return 0;
+}
+</pre>
+<h2 style="font-size:13pt;margin-top:12pt;">Пример работы программы</h2>
+<pre style="font-family:Menlo,Consolas,monospace;font-size:9pt;white-space:pre-wrap;background:#f5f5f5;padding:8pt;border:1px solid #ccc;">Чтение: test.cpp
+Готово: результат записан в test.clean.report.cpp</pre>
+<p style="text-align:justify;">Выходной файл <code>test.clean.report.cpp</code> (получен командой <code>./preprocessor test.cpp test.clean.report.cpp</code>):</p>
+<pre style="font-family:Menlo,Consolas,monospace;font-size:9pt;white-space:pre-wrap;background:#f5f5f5;padding:8pt;border:1px solid #ccc;">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+static const int kLimit = 42;
+static int add(int a, int b) {
+return a + b;
+}
+static bool in_range(int x, int lo, int hi) {
+if (x &lt; lo) {
+return false;
+} else if (x &gt; hi) {
+return false;
+} else {
+return true;
+}
+}
+static void print_sum(int s) {
+std::cout &lt;&lt; &quot;sum=&quot; &lt;&lt; s &lt;&lt; std::endl;
+}
+int main() {
+int n = 5;
+int sum = 0;
+int prod = 1;
+double ratio = 0.0;
+bool flag = true;
+sum = add(2, 3);
+prod = n * (n - 1);
+ratio = static_cast&lt;double&gt;(sum) / static_cast&lt;double&gt;(n);
+if ((sum &gt; kLimit) &amp;&amp; flag) {
+print_sum(sum);
+} else if (sum == 0 || !flag) {
+print_sum(0);
+} else {
+print_sum(sum / 2);
+}
+for (int i = 0; i &lt; n; ++i) {
+prod += i;
+if (i % 2 == 0) {
+sum -= 1;
+}
+}
+while (n &gt; 0) {
+--n;
+if (n == 2) {
+break;
+}
+}
+std::vector&lt;int&gt; v = {1, 2, 3};
+int acc = 0;
+for (int x : v) {
+acc += x;
+}
+return (in_range(acc, 0, 100) &amp;&amp; prod &gt;= 1 &amp;&amp; ratio &gt;= 0.0) ? 0 : 1;
+}</pre>
+<p style="margin-top:24pt;font-size:10pt;color:#444;"><i>По желанию добавьте скриншот терминала (Вставка → Рисунок), как в образце отчёта.</i></p>
+</body></html>
