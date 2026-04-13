@@ -1,0 +1,15 @@
+Сборка:
+  cd "лаб 2"
+  c++ -std=c++17 -Wall -Wextra -O2 -o lexer lexer.cpp
+
+Цепочка с препроцессором ЛР1 (из корня репозитория mtik1):
+  "лаб 1/preprocessor" "лаб 1/test.cpp" "лаб 1/test.clean.cpp"
+  "лаб 2/lexer" "лаб 1/test.clean.cpp"
+
+Проверка лексера на очищенном файле:
+  ./lexer "../лаб 1/test.clean.cpp"
+
+Примеры лексических ошибок (в каталоге лаб 2):
+  ./lexer err_bad_number.cpp
+  ./lexer err_two_dots.cpp
+  ./lexer err_unclosed_string.cpp
